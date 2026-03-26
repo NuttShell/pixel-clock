@@ -155,6 +155,19 @@ i2c:
   scan: true
   id: i2cbus
 
+#time:
+ # - platform: sntp
+ #   id: my_time
+ #   timezone: "${time_zone}"
+ #   update_interval: 8h
+ #   on_time_sync:
+  #    then:
+ #       - ds1307.write_time:
+ # - platform: ds1307
+ #   update_interval: never
+ #   id: ehmtx_time
+
+
 time:
   - platform: sntp
     servers:
@@ -162,12 +175,12 @@ time:
       - time.google.com
       - 0.pool.ntp.org
     id: net_time
+    timezone: "${time_zone}"
     on_time_sync:
       then:
-        ds1307.write_time:
-
+        - ds1307.write_time:
   - platform: ds1307
-    update_interval: 60min
+    update_interval: never
     id: ehmtx_time
 
 display:
