@@ -156,6 +156,8 @@ i2c:
   id: i2cbus
 
 time:
+  - platform: sntp
+    id: net_time
   - platform: ds1307
     update_interval: never
     id: ehmtx_time
