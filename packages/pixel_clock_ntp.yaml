@@ -7,7 +7,7 @@ button:
     on_press:
       then:
         - lambda: |-
-        - component.update: net_time
+        - component.update: emtx_time
         - delay: 2s
         - ds1307.write_time:
         - lambda: |-
@@ -18,7 +18,7 @@ script:
   - id: force_ntp_sync
     then:
       - lambda: |-
-      - component.update: net_time
+      - component.update: emtx_time
       - delay: 2s
       - ds1307.write_time:
 
