@@ -167,7 +167,7 @@ time:
         ds1307.write_time:
 
   - platform: ds1307
-    update_interval: never
+    update_interval: 60min
     id: ehmtx_time
 
 display:
