@@ -162,7 +162,7 @@ time:
       - ru.pool.ntp.org
       - time.google.com
       - 0.pool.ntp.org
-    timezone: ${timezone}
+    timezone: '${timezone}'
     on_time_sync:
       then:
         ds1307.write_time:
