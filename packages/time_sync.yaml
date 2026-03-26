@@ -16,7 +16,7 @@ time:
       - time.google.com
       - 0.pool.ntp.org
     timezone: ${timezone_default}
-    on_time_sync:
+ on_time_sync:
       then:
         - logger.log:
             format: "Время синхронизировано: %04d-%02d-%02d %02d:%02d:%02d"
@@ -47,7 +47,7 @@ time:
   # 2. RTC DS1307 для хранения времени
   # ============================================
   - platform: ds1307
-    update_interval: never  # Чтение только при инициализации
+    update_interval: never
     id: ehmtx_time
     address: 0x68
 
@@ -114,7 +114,6 @@ binary_sensor:
     entity_category: diagnostic
     lambda: |-
       return id(net_time).now().is_valid();
-    update_interval: 10s
 
 # ============================================
 # 6. Кнопки управления
@@ -143,6 +142,7 @@ button:
               id(time_sync_status).publish_state(false);
             }
         - ds1307.write_time:
+
   - platform: template
     name: "Сброс RTC DS1307"
     id: reset_rtc
@@ -175,6 +175,7 @@ script:
                      now.year, now.month, now.day,
                      now.hour, now.minute, now.second);
           }
+
   - id: display_time_info
     mode: single
     then:
@@ -186,7 +187,7 @@ script:
             ESP_LOGI("time_info", "Время: %02d:%02d:%02d", now.hour, now.minute, now.second);
             ESP_LOGI("time_info", "День недели: %d", now.day_of_week);
           } else {
-            ESP_LOGW("time_info", "❌ Время не доступно");
+            ESP_LOGW("time_info", "Время не доступно");
           }
 
 # ============================================
@@ -202,6 +203,7 @@ wifi:
       - script.execute: check_and_sync_time
       - delay: 2s
       - ds1307.write_time:
+      - lambda: id(time_sync_status).publish_state(true);
 
   on_disconnect:
     then:
@@ -209,13 +211,20 @@ wifi:
           format: "WiFi отключен, используем RTC"
           level: WARN
           tag: "wifi"
+      - lambda: id(time_sync_status).publish_state(false);
 
-# Периодическая проверка каждые 12 часов
+# Периодическая проверка каждые 6 часов
 interval:
-  - interval: 12h
+  - interval: 6h
     then:
       - script.execute: check_and_sync_time
       - script.execute: display_time_info
+  
+  # Обновление статуса binary_sensor каждые 10 секунд
+  - interval: 10s
+    then:
+      - lambda: |-
+          id(time_sync_status).publish_state(id(net_time).now().is_valid());
 
 # При загрузке устройства
 esphome:
@@ -224,6 +233,9 @@ esphome:
     then:
       - wait_until:
           condition: wifi.connected
+          timeout: 30s
+      - script.execute: check_and_sync_time
+      - lambda: id(rtttl_out).turn_off();
           timeout: 30s
       - script.execute: check_and_sync_time
       - lambda: id(rtttl_out).turn_off();
