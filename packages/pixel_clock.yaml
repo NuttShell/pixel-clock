@@ -174,7 +174,7 @@ time:
       - ru.pool.ntp.org
       - time.google.com
       - 0.pool.ntp.org
-    id: net_time
+    id: my_time
     timezone: "${time_zone}"
     on_time_sync:
       then:
