@@ -7,7 +7,7 @@ button:
     on_press:
       then:
         - lambda: |-
-            id(net_time).update();
+            id(my_time).update();
         - delay: 2s
         - ds1307.write_time:
         - lambda: |-
@@ -17,7 +17,7 @@ script:
   - id: force_ntp_sync
     then:
       - lambda: |-
-          id(net_time).update();
+          id(my_time).update();
       - delay: 2s
       - ds1307.write_time:
 
