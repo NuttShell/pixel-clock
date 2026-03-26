@@ -155,17 +155,6 @@ i2c:
   scan: true
   id: i2cbus
 
-time:
-  - platform: sntp
-    id: net_time
-    on_time_sync:
-      then:
-        ds1307.write_time:
-
-  - platform: ds1307
-    update_interval: never
-    id: ehmtx_time
-
 display:
   - platform: addressable_light
     id: ehmtx_display
