@@ -11,6 +11,7 @@ button:
         - delay: 2s
         - ds1307.write_time:
         - lambda: |-
+            id(rgb8x32)->set_display_on();
             id(rgb8x32)->force_screen("wait", 1);
 
 script:
