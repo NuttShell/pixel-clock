@@ -156,14 +156,14 @@ i2c:
   id: i2cbus
 
 time:
+  - platform: ds1307
+    update_interval: never
+    id: ehmtx_time
   - platform: homeassistant
     on_time_sync:
       then:
         ds1307.write_time:
-  - platform: ds1307
-    update_interval: never
-    id: ehmtx_time
-    
+
 display:
   - platform: addressable_light
     id: ehmtx_display
