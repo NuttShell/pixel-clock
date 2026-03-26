@@ -1,6 +1,4 @@
 # packages/time_sync.yaml
-substitutions:
-  timezone_default: "Asia/Tomsk"
 time:
   - platform: sntp
     id: net_time
