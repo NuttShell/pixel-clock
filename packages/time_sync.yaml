@@ -1,0 +1,225 @@
+# packages/time_sync.yaml
+# Улучшенная синхронизация времени для Pixel Clock
+# https://github.com/NuttShell/pixel-clock
+
+substitutions:
+  timezone_default: "Asia/Tomsk"
+
+# ============================================
+# 1. Расширенная конфигурация SNTP
+# ============================================
+time:
+  - platform: sntp
+    id: net_time
+    servers:
+      - ru.pool.ntp.org
+      - 0.pool.ntp.org
+    timezone: ${timezone_default}
+    on_time_sync:
+      then:
+        - logger.log:
+            format: "Время синхронизировано: %04d-%02d-%02d %02d:%02d:%02d"
+            args: ["id(net_time).now().year", "id(net_time).now().month", 
+                   "id(net_time).now().day", "id(net_time).now().hour",
+                   "id(net_time).now().minute", "id(net_time).now().second"]
+            level: INFO
+            tag: "time_sync"
+        - ds1307.write_time:
+        - lambda: |-
+            id(time_sync_status).publish_state(true);
+            id(last_sync_timestamp).publish_state(id(net_time).now().timestamp);
+    on_time_change:
+      seconds: /10
+      then:
+        - lambda: |-
+            static uint32_t last_check = 0;
+            auto now = id(net_time).now();
+            if (now.is_valid() && last_check > 0) {
+              uint32_t drift = now.timestamp - last_check;
+              if (drift > 3600 || drift < -3600) {
+                ESP_LOGW("time_drift", "Обнаружен дрейф времени: %ld сек", (long)drift);
+              }
+            }
+            last_check = now.timestamp;
+
+# ============================================
+# 2. Датчики мониторинга времени
+# ============================================
+sensor:
+  - platform: template
+    name: "Последняя синхронизация (timestamp)"
+    id: last_sync_timestamp
+    entity_category: diagnostic
+    icon: mdi:clock-check
+    accuracy_decimals: 0
+    lambda: |-
+      return 0;
+
+  - platform: template
+    name: "Качество синхронизации"
+    id: time_quality
+    entity_category: diagnostic
+    icon: mdi:signal
+    unit_of_measurement: "%"
+    lambda: |-
+      auto now = id(net_time).now();
+      if (!now.is_valid()) return 0.0;
+      return 100.0;
+
+# ============================================
+# 3. Текстовые сенсоры статуса
+# ============================================
+text_sensor:
+  - platform: template
+    name: "Статус времени"
+    id: time_sync_status_text
+    entity_category: diagnostic
+    icon: mdi:network-pos
+    lambda: |-
+      if (id(net_time).now().is_valid()) {
+        auto now = id(net_time).now();
+        char buffer[20];
+        sprintf(buffer, "Синхр: %02d:%02d", now.hour, now.minute);
+        return std::string(buffer);
+      } else {
+        return {"Нет синхронизации"};
+      }
+    update_interval: 30s
+
+  - platform: template
+    name: "Часовой пояс"
+    id: timezone_display
+    entity_category: diagnostic
+    icon: mdi:airplane-time
+    lambda: |-
+      return {"${timezone_default}"};
+
+# ============================================
+# 4. Бинарный сенсор статуса
+# ============================================
+binary_sensor:
+  - platform: template
+    name: "Время синхронизировано"
+    id: time_sync_status
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: |-
+      return id(net_time).now().is_valid();
+    update_interval: 10s
+
+# ============================================
+# 5. Кнопки управления
+# ============================================
+button:
+  - platform: template
+    name: "Синхронизировать время"
+    id: force_time_sync
+    icon: mdi:sync
+    entity_category: config
+    on_press:
+      then:
+        - logger.log:
+            format: "Запуск принудительной синхронизации..."
+            level: INFO
+            tag: "time_sync"
+        - lambda: |-
+            id(net_time).call_setup();
+        - delay: 3s
+        - lambda: |-
+            if (id(net_time).now().is_valid()) {
+              ESP_LOGI("time_sync", "Синхронизация успешна");
+              id(time_sync_status).publish_state(true);
+            } else {
+              ESP_LOGW("time_sync", "Синхронизация не удалась");
+              id(time_sync_status).publish_state(false);
+            }
+        - ds1307.write_time:
+        - ds1307.read_time:
+
+  - platform: template
+    name: "Сброс RTC DS1307"
+    id: reset_rtc
+    icon: mdi:clock-remove
+    entity_category: config
+    disabled_by_default: true
+    on_press:
+      then:
+        - logger.log:
+            format: "Сброс RTC DS1307..."
+            level: WARN
+            tag: "rtc"
+        - ds1307.write_time:
+
+# ============================================
+# 6. Скрипты
+# ============================================
+script:
+  - id: check_and_sync_time
+    mode: restart
+    then:
+      - lambda: |-
+          auto now = id(net_time).now();
+          if (!now.is_valid()) {
+            ESP_LOGW("time_script", "Время не синхронизировано, запускаем...");
+            id(net_time).call_setup();
+            delay(2000);
+          } else {
+            ESP_LOGI("time_script", "Время: %04d-%02d-%02d %02d:%02d:%02d",
+                     now.year, now.month, now.day,
+                     now.hour, now.minute, now.second);
+          }
+      - ds1307.read_time:
+
+  - id: display_time_info
+    mode: single
+    then:
+      - lambda: |-
+          auto now = id(net_time).now();
+          if (now.is_valid()) {
+            ESP_LOGI("time_info", "=== Информация о времени ===");
+            ESP_LOGI("time_info", "Дата: %04d-%02d-%02d", now.year, now.month, now.day);
+            ESP_LOGI("time_info", "Время: %02d:%02d:%02d", now.hour, now.minute, now.second);
+            ESP_LOGI("time_info", "День недели: %d", now.day_of_week);
+          } else {
+            ESP_LOGW("time_info", "Время не доступно");
+          }
+
+# ============================================
+# 7. Автоматизации
+# ============================================
+wifi:
+  on_connect:
+    then:
+      - logger.log:
+          format: "WiFi подключен, синхронизируем время..."
+          level: INFO
+          tag: "wifi"
+      - script.execute: check_and_sync_time
+      - delay: 2s
+      - ds1307.write_time:
+
+  on_disconnect:
+    then:
+      - logger.log:
+          format: "WiFi отключен, используем RTC"
+          level: WARN
+          tag: "wifi"
+      - ds1307.read_time:
+
+# Периодическая проверка каждые 12 часов
+interval:
+  - interval: 12h
+    then:
+      - script.execute: check_and_sync_time
+      - script.execute: display_time_info
+
+# При загрузке устройства
+esphome:
+  on_boot:
+    priority: 600
+    then:
+      - wait_until:
+          condition: wifi.connected
+          timeout: 60s
+      - script.execute: check_and_sync_time
+      - ds1307.read_time:
