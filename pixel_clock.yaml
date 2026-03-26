@@ -21,6 +21,7 @@ packages:
       - packages/pixel_clock.yaml
       - packages/pixel_clock_aab_light.yaml
       - packages/pixel_clock_timezone.yaml
+      - packages/pixel_clock_ntp.yaml
       # - packages/pixel_clock_aab_tiny.yaml
       # - packages/pixel_clock_sun.yaml
     refresh: 1s
