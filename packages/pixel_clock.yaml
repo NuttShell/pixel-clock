@@ -175,7 +175,6 @@ time:
       - time.google.com
       - 0.pool.ntp.org
     id: my_time
-    timezone: "${time_zone}"
     on_time_sync:
       then:
         - ds1307.write_time:
