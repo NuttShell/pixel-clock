@@ -12,9 +12,8 @@ time:
   - platform: sntp
     id: net_time
     servers:
-      - pool.ntp.org
+      - ru.pool.ntp.org
       - time.google.com
-      - time.cloudflare.com
       - 0.pool.ntp.org
     timezone: ${timezone_default}
     on_time_sync:
