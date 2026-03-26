@@ -157,11 +157,12 @@ i2c:
 
 time:
   - platform: sntp
+    id: net_time
     servers:
       - ru.pool.ntp.org
       - time.google.com
       - 0.pool.ntp.org
-    id: net_time
+    timezone: timezone
     on_time_sync:
       then:
         ds1307.write_time:
