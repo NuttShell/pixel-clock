@@ -1,13 +1,6 @@
 # packages/time_sync.yaml
-# Улучшенная синхронизация времени для Pixel Clock
-# https://github.com/NuttShell/pixel-clock
-
 substitutions:
   timezone_default: "Asia/Tomsk"
-
-# ============================================
-# 1. Расширенная конфигурация SNTP
-# ============================================
 time:
   - platform: sntp
     id: net_time
@@ -42,18 +35,10 @@ time:
               }
             }
             last_check = now.timestamp;
-
-  # ============================================
-  # 2. RTC DS1307 для хранения времени
-  # ============================================
   - platform: ds1307
     update_interval: never
     id: ehmtx_time
     address: 0x68
-
-# ============================================
-# 3. Датчики мониторинга времени
-# ============================================
 sensor:
   - platform: template
     name: "Последняя синхронизация (timestamp)"
@@ -74,10 +59,6 @@ sensor:
       auto now = id(net_time).now();
       if (!now.is_valid()) return 0.0;
       return 100.0;
-
-# ============================================
-# 4. Текстовые сенсоры статуса
-# ============================================
 text_sensor:
   - platform: template
     name: "Статус времени"
@@ -102,10 +83,6 @@ text_sensor:
     icon: mdi:airplane-time
     lambda: |-
       return {"${timezone_default}"};
-
-# ============================================
-# 5. Бинарный сенсор статуса
-# ============================================
 binary_sensor:
   - platform: template
     name: "Время синхронизировано"
@@ -114,10 +91,6 @@ binary_sensor:
     entity_category: diagnostic
     lambda: |-
       return id(net_time).now().is_valid();
-
-# ============================================
-# 6. Кнопки управления
-# ============================================
 button:
   - platform: template
     name: "Синхронизировать время"
@@ -156,10 +129,6 @@ button:
             level: WARN
             tag: "rtc"
         - ds1307.write_time:
-
-# ============================================
-# 7. Скрипты
-# ============================================
 script:
   - id: check_and_sync_time
     mode: restart
@@ -189,10 +158,6 @@ script:
           } else {
             ESP_LOGW("time_info", "Время не доступно");
           }
-
-# ============================================
-# 8. Автоматизации
-# ============================================
 wifi:
   on_connect:
     then:
