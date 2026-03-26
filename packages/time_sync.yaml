@@ -1,3 +1,8 @@
+# ============================================
+# Синхронизация времени для ESPHome Pixel Clock
+# ============================================
+
+# Сенсоры
 sensor:
   - platform: template
     name: "Последняя синхронизация (timestamp)"
@@ -19,9 +24,7 @@ sensor:
       if (!now.is_valid()) return 0.0;
       return 100.0;
 
-# ============================================
-# 2. Текстовые сенсоры статуса
-# ============================================
+# Текстовые сенсоры статуса
 text_sensor:
   - platform: template
     name: "Статус времени"
@@ -47,9 +50,7 @@ text_sensor:
     lambda: |-
       return {"Asia/Tomsk"};
 
-# ============================================
-# 3. Бинарный сенсор статуса
-# ============================================
+# Бинарный сенсор статуса
 binary_sensor:
   - platform: template
     name: "Время синхронизировано"
@@ -59,9 +60,7 @@ binary_sensor:
     lambda: |-
       return id(net_time).now().is_valid();
 
-# ============================================
-# 4. Кнопки управления
-# ============================================
+# Кнопки управления
 button:
   - platform: template
     name: "Синхронизировать время"
@@ -101,9 +100,7 @@ button:
             tag: "rtc"
         - ds1307.write_time:
 
-# ============================================
-# 5. Скрипты
-# ============================================
+# Скрипты
 script:
   - id: check_and_sync_time
     mode: restart
@@ -111,11 +108,11 @@ script:
       - lambda: |-
           auto now = id(net_time).now();
           if (!now.is_valid()) {
-            ESP_LOGW("time_script", "Время не синхронизировано...");
+            ESP_LOGW("time_script", "Время не синхронизировано, запускаем SNTP...");
             id(net_time).call_setup();
             delay(2000);
           } else {
-            ESP_LOGI("time_script", "Время: %04d-%02d-%02d %02d:%02d:%02d",
+            ESP_LOGI("time_script", "Время уже синхронизировано: %04d-%02d-%02d %02d:%02d:%02d",
                      now.year, now.month, now.day,
                      now.hour, now.minute, now.second);
           }
@@ -132,9 +129,33 @@ script:
                      now.hour, now.minute, now.second);
           }
 
-# ============================================
-# 6. Автоматизации
-# ============================================
+# Автоматизации для синхронизации времени при загрузке и подключении WiFi
+esphome:
+  on_boot:
+    priority: 600
+    then:
+      - logger.log:
+          format: "Загрузка устройства, ожидаем подключение WiFi..."
+          level: INFO
+          tag: "boot"
+      - wait_until:
+          wifi.connected: true
+      - logger.log:
+          format: "WiFi подключен, выполняем синхронизацию времени через SNTP..."
+          level: INFO
+          tag: "boot"
+      - script.execute: check_and_sync_time
+      - delay: 3s
+      - lambda: |-
+          if (id(net_time).now().is_valid()) {
+            ESP_LOGI("boot", "Синхронизация времени успешна, записываем в RTC DS1307");
+            id(ehmtx_time).write_time();
+            id(time_sync_status).publish_state(true);
+          } else {
+            ESP_LOGW("boot", "Синхронизация времени не удалась");
+            id(time_sync_status).publish_state(false);
+          }
+
 wifi:
   on_connect:
     then:
@@ -143,9 +164,12 @@ wifi:
           level: INFO
           tag: "wifi"
       - script.execute: check_and_sync_time
-      - delay: 2s
-      - ds1307.write_time:
-      - lambda: id(time_sync_status).publish_state(true);
+      - delay: 3s
+      - lambda: |-
+          if (id(net_time).now().is_valid()) {
+            id(ehmtx_time).write_time();
+            id(time_sync_status).publish_state(true);
+          }
 
   on_disconnect:
     then:
@@ -155,6 +179,7 @@ wifi:
           tag: "wifi"
       - lambda: id(time_sync_status).publish_state(false);
 
+# Периодическая синхронизация каждые 6 часов
 interval:
   - interval: 6h
     then:
