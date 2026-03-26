@@ -8,7 +8,7 @@ text:
     mode: text
     restore_value: true
     initial_value: "Asia/Krasnoyarsk"
-    icon: mdi:airplane-time
+    icon: mdi:airplane-clock
     entity_category: config
     disabled_by_default: true
     web_server:
