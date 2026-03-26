@@ -1,42 +1,3 @@
-# packages/time_sync.yaml
-time:
-  - platform: sntp
-    id: net_time
-    servers:
-      - ru.pool.ntp.org
-      - time.google.com
-      - 0.pool.ntp.org
-    timezone: ${timezone_default}
- on_time_sync:
-      then:
-        - logger.log:
-            format: "Время синхронизировано: %04d-%02d-%02d %02d:%02d:%02d"
-            args: ["id(net_time).now().year", "id(net_time).now().month", 
-                   "id(net_time).now().day", "id(net_time).now().hour",
-                   "id(net_time).now().minute", "id(net_time).now().second"]
-            level: INFO
-            tag: "time_sync"
-        - ds1307.write_time:
-        - lambda: |-
-            id(time_sync_status).publish_state(true);
-            id(last_sync_timestamp).publish_state(id(net_time).now().timestamp);
-    on_time_change:
-      seconds: /10
-      then:
-        - lambda: |-
-            static uint32_t last_check = 0;
-            auto now = id(net_time).now();
-            if (now.is_valid() && last_check > 0) {
-              uint32_t drift = now.timestamp - last_check;
-              if (drift > 3600 || drift < -3600) {
-                ESP_LOGW("time_drift", "Обнаружен дрейф времени: %ld сек", (long)drift);
-              }
-            }
-            last_check = now.timestamp;
-  - platform: ds1307
-    update_interval: never
-    id: ehmtx_time
-    address: 0x68
 sensor:
   - platform: template
     name: "Последняя синхронизация (timestamp)"
@@ -57,6 +18,10 @@ sensor:
       auto now = id(net_time).now();
       if (!now.is_valid()) return 0.0;
       return 100.0;
+
+# ============================================
+# 2. Текстовые сенсоры статуса
+# ============================================
 text_sensor:
   - platform: template
     name: "Статус времени"
@@ -80,7 +45,11 @@ text_sensor:
     entity_category: diagnostic
     icon: mdi:airplane-time
     lambda: |-
-      return {"${timezone_default}"};
+      return {"Asia/Tomsk"};
+
+# ============================================
+# 3. Бинарный сенсор статуса
+# ============================================
 binary_sensor:
   - platform: template
     name: "Время синхронизировано"
@@ -89,6 +58,10 @@ binary_sensor:
     entity_category: diagnostic
     lambda: |-
       return id(net_time).now().is_valid();
+
+# ============================================
+# 4. Кнопки управления
+# ============================================
 button:
   - platform: template
     name: "Синхронизировать время"
@@ -98,7 +71,7 @@ button:
     on_press:
       then:
         - logger.log:
-            format: "Запуск принудительной синхронизации..."
+            format: "Запуск синхронизации..."
             level: INFO
             tag: "time_sync"
         - lambda: |-
@@ -127,6 +100,10 @@ button:
             level: WARN
             tag: "rtc"
         - ds1307.write_time:
+
+# ============================================
+# 5. Скрипты
+# ============================================
 script:
   - id: check_and_sync_time
     mode: restart
@@ -134,7 +111,7 @@ script:
       - lambda: |-
           auto now = id(net_time).now();
           if (!now.is_valid()) {
-            ESP_LOGW("time_script", "Время не синхронизировано, запускаем...");
+            ESP_LOGW("time_script", "Время не синхронизировано...");
             id(net_time).call_setup();
             delay(2000);
           } else {
@@ -149,13 +126,15 @@ script:
       - lambda: |-
           auto now = id(net_time).now();
           if (now.is_valid()) {
-            ESP_LOGI("time_info", "=== Информация о времени ===");
-            ESP_LOGI("time_info", "Дата: %04d-%02d-%02d", now.year, now.month, now.day);
-            ESP_LOGI("time_info", "Время: %02d:%02d:%02d", now.hour, now.minute, now.second);
-            ESP_LOGI("time_info", "День недели: %d", now.day_of_week);
-          } else {
-            ESP_LOGW("time_info", "Время не доступно");
+            ESP_LOGI("time_info", "=== Время ===");
+            ESP_LOGI("time_info", "%04d-%02d-%02d %02d:%02d:%02d",
+                     now.year, now.month, now.day,
+                     now.hour, now.minute, now.second);
           }
+
+# ============================================
+# 6. Автоматизации
+# ============================================
 wifi:
   on_connect:
     then:
@@ -171,34 +150,17 @@ wifi:
   on_disconnect:
     then:
       - logger.log:
-          format: "WiFi отключен, используем RTC"
+          format: "WiFi отключен"
           level: WARN
           tag: "wifi"
       - lambda: id(time_sync_status).publish_state(false);
 
-# Периодическая проверка каждые 6 часов
 interval:
   - interval: 6h
     then:
       - script.execute: check_and_sync_time
-      - script.execute: display_time_info
   
-  # Обновление статуса binary_sensor каждые 10 секунд
   - interval: 10s
     then:
       - lambda: |-
           id(time_sync_status).publish_state(id(net_time).now().is_valid());
-
-# При загрузке устройства
-esphome:
-  on_boot:
-    priority: 600
-    then:
-      - wait_until:
-          condition: wifi.connected
-          timeout: 30s
-      - script.execute: check_and_sync_time
-      - lambda: id(rtttl_out).turn_off();
-          timeout: 30s
-      - script.execute: check_and_sync_time
-      - lambda: id(rtttl_out).turn_off();
