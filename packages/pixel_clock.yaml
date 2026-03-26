@@ -157,6 +157,10 @@ i2c:
 
 time:
   - platform: sntp
+    servers:
+      - ru.pool.ntp.org
+      - time.google.com
+      - 0.pool.ntp.org
     id: net_time
     on_time_sync:
       then:
