@@ -5,6 +5,7 @@ on:
     # On Tag / Release by Mask
     tags:
       - "v*"
+  workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -14,16 +15,18 @@ permissions:
 
 jobs:
   prepare:
-    name: Prepare Release
+    name: Latest Release
     runs-on: ubuntu-latest
     outputs:
       name: ${{ steps.current_release.outputs.name }}
       version: ${{ steps.current_release.outputs.tag_name }}
       url: ${{ steps.current_release.outputs.html_url }}
     steps:
-      - name: 👀 Get Current Release
+      - name: 👀 Get Latest Release
         id: current_release
         uses: joutvhu/get-release@v1
+        with:
+          latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -43,7 +46,7 @@ jobs:
     permissions:
       contents: write
       discussions: write
-
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -60,7 +63,7 @@ jobs:
         working-directory: release-pixel-clock-files
 
       - name: 🎭 Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             release-pixel-clock-files/*.factory.bin
@@ -114,6 +117,57 @@ jobs:
           pip install mkdocs-video
           pip install "mkdocs-material[imaging]"
 
+      - name: 📦 Download Icons Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: icons-*
+          path: icons-pixel-clock-files
+          merge-multiple: true
+
+      - name: 💅 Transform HTML to MkDocs Markdown
+        run: |
+          INPUT_FILE="icons-pixel-clock-files/pixel_clock.html"
+          OUTPUT_FILE="docs/icons.md"
+
+          echo "## Default Icons" > "$OUTPUT_FILE"
+          echo "" >> "$OUTPUT_FILE"
+
+          cat <<EOF >> "$OUTPUT_FILE"
+          <style>
+            .icon-group { margin-bottom: 10px; }
+            .icon-header { margin-bottom: 5px; color: inherit; }
+            .icon-name { color: var(--md-code-hl-color); font-weight: bold; }
+            .pixel-box {
+              background: #1a1a1a;
+              padding: 15px;
+              border-radius: 8px;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 4px;
+            }
+            .pixel-svg {
+              width: 50px;
+              height: 50px;
+              border: 1px solid #444;
+              image-rendering: pixelated;
+            }
+          </style>
+          EOF
+
+          cat "$INPUT_FILE" | tr -d '\n\r' \
+            | sed -E 's/Icon:/\nIcon:/g' \
+            | grep '^Icon:' \
+            | sed -E 's/<[bB]>([^<]+)<\/[bB]>/<span class="icon-name">\1<\/span>/g' \
+            | sed -E 's/<\/?(div|body|html|br)[^>]*>//gi' \
+            | sed -E 's/<svg/<svg class="pixel-svg"/g' \
+            | sed -E 's/(Icon:[^:]+:)(.*)/<div class="icon-group"><div class="icon-header">\1<\/div><div class="pixel-box">\2<\/div><\/div>/' >> "$OUTPUT_FILE"
+
+      - name: 🧹 Delete Icons Artifacts
+        uses: geekyeggo/delete-artifact@v6
+        with:
+          name: icons-*
+          failOnError: false
+
       - name: 💅 Build the docs site
         run: mkdocs build --config-file .mkdocs.yml
 
@@ -135,16 +189,16 @@ jobs:
         working-directory: site/pixel-clock
 
       - name: 🎭 Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: 🚀 Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site/
 
       - name: 💅 Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
       - name: 🧹 Delete Artifacts / Github Pages
         uses: geekyeggo/delete-artifact@v6

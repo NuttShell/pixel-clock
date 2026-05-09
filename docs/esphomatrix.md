@@ -281,7 +281,7 @@ Screen|Mode|Value|
 |rainbow_text_screen|MODE_RAINBOW_TEXT| 8|
 |rainbow_clock_screen|MODE_RAINBOW_CLOCK| 9|
 |rainbow_date_screen|MODE_RAINBOW_DATE| 10|
-|bitmap_screen|MODE_BITMAP_SCREEN| 11|
+|bitmap_screen|[MODE_BITMAP_SCREEN](screens.md#mode_bitmap_screen)| 11|
 |bitmap_small|MODE_BITMAP_SMALL| 12|
 |color_screen|MODE_COLOR| 13|
 |fire_screen|MODE_FIRE| 14|
@@ -302,6 +302,9 @@ Screen|Mode|Value|
 ## Icons and Animations
 
 Download and install all needed icons `(.jpg/.png)` and animations `(.gif)` under the `matrix_lamp:` key. All icons have to be 8x8 pixels in size. If necessary, you can scale them with the option `resize: 8x8`.
+
+!!! tip
+    To easily convert your own images into the required RGB565 format for use in your YAML, you can use the built-in [Bitmap Converter](converter.md) or [Bitmap Editor](bitmap-editor.md) tool.
 
 You can also specify a URL to directly download the image file. The URLs will only be downloaded once at compile time, so there is no additional traffic on the hosting website.
 
@@ -336,6 +339,9 @@ All other solutions provide ready-made icons, especially **Lametric** has a big 
         - id: homeassistant
           url: https://github.com/home-assistant/assets/raw/master/logo/logo-special.png      
     ```
+
+!!! tip
+    [Default icons](icons.md) in the **Pixel Clock** configuration
 
 ### Parameters reference
 
@@ -437,10 +443,10 @@ Numerous features are accessible with services from home assistant and lambdas t
 - **r, g, b**: Color components for red, green, and blue 0..255
 - **size**: The size of the corner indicator or alarm, 1-3, center indicator 1-4, icon_indicator 1-10
 - **percent**: values from 0..100
-- **icon_name**: the id of the icon to show, as defined in the YAML file (or pseudo-icon `blank` - empty icon, `solid` - solid icon, `calendar` - calendar icon), it is also possible to set the arbitrary [screen identifier](#screen-id), for example `icon_name|screen_id`
-- **icons**: the list of id of the icon to show, as defined in the YAML file, like: icon1,icon2.
+- **icon_name**: the id of the [icon](icons.md) to show, as defined in the YAML file (or pseudo-icon `blank` - empty icon, `solid` - solid icon, `calendar` - calendar icon), it is also possible to set the arbitrary [screen identifier](#screen-id), for example `icon_name|screen_id`
+- **icons**: the list of id of the [icon](icons.md) to show, as defined in the YAML file, like: `icon1,icon2`.
 - **text**: a text message to display
-- **lifetime**: how long does this screen stay in the queue (minutes), `-5` for Infinity.
+- **lifetime**: how long does this screen stay in the queue (minutes), any negative for Infinity.
 - **screen_time**: how long is this screen display in the loop (seconds). For short text without scrolling it is shown the defined time, longer text is scrolled at least `scroll_count` times.
 - **default_font**: use the default font (true) or the special font (false)
 - **progress**: can take a value from -100 to 100, the color of the progress bar is calculated automatically, if no colors are specified in the function `set_progressbar_color`, then if the progress is in the range `0..100`, then `from red to green`, if in the range `-100..0`, then from `green to red`.
