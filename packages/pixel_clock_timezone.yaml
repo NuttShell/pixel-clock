@@ -7,7 +7,7 @@ text:
     max_length: 75
     mode: text
     restore_value: true
-    initial_value: "Asia/Krasnoyarsk"
+    initial_value: "<+07>-7"
     icon: mdi:airplane-clock
     entity_category: config
     disabled_by_default: true
@@ -32,6 +32,6 @@ script:
           size_t end = timezone.find('>');
           if (start != std::string::npos && end != std::string::npos && end > start)
             timezone.replace(start, (end - start) + 1, "UTC");
-          net_time->set_timezone(timezone.c_str());
-          net_time->call_setup();
-          net_time->dump_config();
+          setenv("TZ", timezone.c_str(), 1);
+          tzset();
+          ESP_LOGI("timezone", "Timezone applied: %s", timezone.c_str());
